@@ -14,6 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
+      contest_problems: {
+        Row: {
+          contest_id: string
+          created_at: string
+          id: string
+          order_num: number
+          points: number
+          problem_id: string
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          id?: string
+          order_num?: number
+          points?: number
+          problem_id: string
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          id?: string
+          order_num?: number
+          points?: number
+          problem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_problems_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_problems_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_time: string
+          id: string
+          is_public: boolean
+          start_time: string
+          status: Database["public"]["Enums"]["contest_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time: string
+          id?: string
+          is_public?: boolean
+          start_time: string
+          status?: Database["public"]["Enums"]["contest_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_public?: boolean
+          start_time?: string
+          status?: Database["public"]["Enums"]["contest_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      problems: {
+        Row: {
+          constraints: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          id: string
+          input_format: string | null
+          memory_limit: number
+          output_format: string | null
+          sample_input: string | null
+          sample_output: string | null
+          test_cases: Json
+          time_limit: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          constraints?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          id?: string
+          input_format?: string | null
+          memory_limit?: number
+          output_format?: string | null
+          sample_input?: string | null
+          sample_output?: string | null
+          test_cases?: Json
+          time_limit?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          constraints?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          id?: string
+          input_format?: string | null
+          memory_limit?: number
+          output_format?: string | null
+          sample_input?: string | null
+          sample_output?: string | null
+          test_cases?: Json
+          time_limit?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -75,9 +210,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_contest_status: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
+      contest_status: "upcoming" | "active" | "completed"
+      difficulty_level: "easy" | "medium" | "hard"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -206,6 +344,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      contest_status: ["upcoming", "active", "completed"],
+      difficulty_level: ["easy", "medium", "hard"],
     },
   },
 } as const

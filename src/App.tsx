@@ -10,6 +10,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Problems from "./pages/admin/Problems";
+import CreateProblem from "./pages/admin/CreateProblem";
+import Contests from "./pages/admin/Contests";
+import CreateContest from "./pages/admin/CreateContest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +42,38 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/problems"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Problems />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/problems/create"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CreateProblem />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/contests"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Contests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/contests/create"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CreateContest />
                 </ProtectedRoute>
               }
             />
