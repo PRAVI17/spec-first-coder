@@ -11,7 +11,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, username: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, username: string, role: UserRole) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, username: string) => {
+  const signUp = async (email: string, password: string, fullName: string, username: string, role: UserRole) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
             username: username,
+            role: role,
           },
         },
       });
