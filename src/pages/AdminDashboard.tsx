@@ -34,7 +34,7 @@ export default function AdminDashboard() {
     },
   });
 
-  // Fetch recent submissions
+  // Fetch recent submissions with rank and points
   const { data: recentSubmissions, refetch: refetchSubmissions } = useQuery({
     queryKey: ['recent-submissions'],
     queryFn: async () => {
@@ -47,6 +47,48 @@ export default function AdminDashboard() {
           contests(title)
         `)
         .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      // Get rank and total points for each submission
+      const enrichedData = await Promise.all(
+        data.map(async (submission: any) => {
+          const { data: participants } = await (supabase as any)
+            .from('contest_participants')
+            .select('user_id, total_score')
+            .eq('contest_id', submission.contest_id)
+            .order('total_score', { ascending: false });
+
+          const userRank = participants?.findIndex((p: any) => p.user_id === submission.user_id) + 1 || 0;
+          const userPoints = participants?.find((p: any) => p.user_id === submission.user_id)?.total_score || 0;
+
+          return {
+            ...submission,
+            rank: userRank,
+            totalPoints: userPoints,
+          };
+        })
+      );
+
+      return enrichedData;
+    },
+  });
+
+  // Fetch top performers across all contests
+  const { data: topPerformers } = useQuery({
+    queryKey: ['top-performers'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('contest_participants')
+        .select(`
+          user_id,
+          total_score,
+          profiles(full_name, username),
+          contests(title)
+        `)
+        .gt('total_score', 0)
+        .order('total_score', { ascending: false })
         .limit(10);
 
       if (error) throw error;
@@ -231,34 +273,35 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Activity */}
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          {/* Top Performers */}
           <Card>
             <CardHeader>
-              <CardTitle>Live Submission Feed</CardTitle>
-              <CardDescription>Real-time submission updates</CardDescription>
+              <CardTitle>Top Performers</CardTitle>
+              <CardDescription>Leading participants across all contests</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentSubmissions && recentSubmissions.length > 0 ? (
+              {topPerformers && topPerformers.length > 0 ? (
                 <div className="space-y-4">
-                  {recentSubmissions.map((submission: any) => (
-                    <div key={submission.id} className="flex items-start justify-between border-b pb-3 last:border-0">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{submission.profiles?.username || 'Unknown User'}</p>
-                        <p className="text-xs text-muted-foreground">{submission.problems?.title || 'Unknown Problem'}</p>
-                        <p className="text-xs text-muted-foreground">{submission.contests?.title || 'Unknown Contest'}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(submission.created_at), { addSuffix: true })}
-                        </p>
+                  {topPerformers.map((participant: any, index: number) => (
+                    <div key={participant.user_id + participant.contests.title} className="flex items-center justify-between border-b pb-3 last:border-0">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                          #{index + 1}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{participant.profiles?.username || 'Unknown User'}</p>
+                          <p className="text-xs text-muted-foreground">{participant.contests?.title || 'Unknown Contest'}</p>
+                        </div>
                       </div>
-                      <Badge variant="outline" className={getStatusColor(submission.status)}>
-                        {submission.status.replace('_', ' ')}
-                      </Badge>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-primary">{participant.total_score} pts</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No submissions yet</p>
+                <p className="text-muted-foreground text-center py-8">No participants with points yet</p>
               )}
             </CardContent>
           </Card>
@@ -307,6 +350,58 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Recent Submissions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Submissions</CardTitle>
+            <CardDescription>Latest submissions with participant rankings</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentSubmissions && recentSubmissions.length > 0 ? (
+              <div className="space-y-4">
+                {recentSubmissions.map((submission: any) => (
+                  <div key={submission.id} className="flex items-start justify-between border-b pb-3 last:border-0">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium">{submission.profiles?.username || 'Unknown User'}</p>
+                        {submission.rank > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            Rank #{submission.rank}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{submission.problems?.title || 'Unknown Problem'}</p>
+                      <p className="text-xs text-muted-foreground">{submission.contests?.title || 'Unknown Contest'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(submission.created_at), { addSuffix: true })}
+                        </p>
+                        {submission.totalPoints > 0 && (
+                          <span className="text-xs font-medium text-primary">
+                            • {submission.totalPoints} pts
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="outline" className={getStatusColor(submission.status)}>
+                        {submission.status.replace('_', ' ')}
+                      </Badge>
+                      {submission.score > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{submission.score} pts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No submissions yet</p>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
