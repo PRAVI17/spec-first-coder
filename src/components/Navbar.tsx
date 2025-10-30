@@ -52,7 +52,7 @@ export function Navbar() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
             <Code2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">CodeArena</span>
+            <span className="text-xl font-bold">smarTest</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-2">

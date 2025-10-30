@@ -46,7 +46,7 @@ export default function Login() {
             <Code2 className="h-12 w-12 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>Sign in to your CodeArena account</CardDescription>
+          <CardDescription>Sign in to your smarTest account</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">

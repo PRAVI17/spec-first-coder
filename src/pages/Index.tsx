@@ -15,7 +15,7 @@ const Index = () => {
             <Code2 className="h-16 w-16 text-primary" />
           </div>
           <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Welcome to CodeArena
+            Welcome to smarTest
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Challenge yourself in competitive programming contests. Solve problems, compete with others, and climb the leaderboards.
@@ -68,7 +68,7 @@ const Index = () => {
 
       <footer className="border-t py-8 mt-16">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2025 CodeArena. All rights reserved.</p>
+          <p>&copy; 2025 smarTest. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -71,7 +71,7 @@ export default function Register() {
             <Code2 className="h-12 w-12 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>Join CodeArena and start competing</CardDescription>
+          <CardDescription>Join smarTest and start competing</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
