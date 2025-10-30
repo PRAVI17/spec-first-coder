@@ -52,9 +52,17 @@ export default function CreateContest() {
 
     setLoading(true);
 
+    // Convert datetime-local to ISO string with proper timezone handling
+    const startDate = new Date(formData.start_time);
+    const endDate = new Date(formData.end_time);
+
     const { data: contest, error: contestError } = await supabase
       .from('contests')
-      .insert(formData)
+      .insert({
+        ...formData,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+      })
       .select()
       .single();
 
