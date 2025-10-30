@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Clock, Send, Trophy } from 'lucide-react';
+import { Clock, Send, Trophy, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 import Editor from '@monaco-editor/react';
 
 export default function ContestParticipate() {
@@ -21,6 +22,8 @@ export default function ContestParticipate() {
   const [language, setLanguage] = useState<'javascript' | 'python' | 'java' | 'cpp' | 'c'>('javascript');
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const [contestEnded, setContestEnded] = useState(false);
+  const [testCaseResults, setTestCaseResults] = useState<Array<{index: number, status: 'pending' | 'passed' | 'failed'}>>([]);
 
   const { data: contest } = useQuery({
     queryKey: ['contest-participate', id],
@@ -59,7 +62,29 @@ export default function ContestParticipate() {
         .limit(10);
       
       if (error) throw error;
-      return data;
+
+      // Calculate accuracy for each participant
+      const participantsWithAccuracy = await Promise.all(
+        data.map(async (participant: any) => {
+          const { data: userSubmissions } = await (supabase as any)
+            .from('submissions')
+            .select('status')
+            .eq('contest_id', id)
+            .eq('user_id', participant.user_id);
+
+          const totalSubmissions = userSubmissions?.length || 0;
+          const acceptedSubmissions = userSubmissions?.filter((s: any) => s.status === 'accepted').length || 0;
+          const accuracy = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
+
+          return {
+            ...participant,
+            totalSubmissions,
+            accuracy,
+          };
+        })
+      );
+      
+      return participantsWithAccuracy;
     },
     refetchInterval: 3000, // Refresh leaderboard every 3 seconds for live updates
   });
@@ -101,6 +126,7 @@ export default function ContestParticipate() {
 
       if (distance < 0) {
         setTimeLeft('Contest Ended');
+        setContestEnded(true);
         clearInterval(timer);
       } else {
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -114,6 +140,15 @@ export default function ContestParticipate() {
   }, [contest]);
 
   const handleSubmit = async () => {
+    if (contestEnded) {
+      toast({
+        title: 'Contest Ended',
+        description: 'This contest has ended. No more submissions are accepted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!code.trim()) {
       toast({
         title: 'Error',
@@ -137,16 +172,24 @@ export default function ContestParticipate() {
       return;
     }
 
+    // Initialize test case animation
+    const totalTestCases = (problem.test_cases as any[])?.length || 0;
+    const initialTestCases = Array.from({ length: totalTestCases }, (_, i) => ({
+      index: i,
+      status: 'pending' as const
+    }));
+    setTestCaseResults(initialTestCases);
+
     // Simulate submission - in real app, this would call Judge0 API via edge function
-    const { error } = await (supabase as any).from('submissions').insert({
+    const { data: submission, error } = await (supabase as any).from('submissions').insert({
       user_id: user!.id,
       contest_id: id!,
       problem_id: selectedProblemId,
       language,
       code,
       status: 'pending',
-      total_test_cases: (problem.test_cases as any[])?.length || 0,
-    });
+      total_test_cases: totalTestCases,
+    }).select().single();
 
     if (error) {
       toast({
@@ -154,15 +197,43 @@ export default function ContestParticipate() {
         description: 'Failed to submit solution',
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Submitted!',
-        description: 'Your solution is being evaluated',
-      });
-      refetchSubmissions();
-      refetchLeaderboard();
+      setTestCaseResults([]);
+      setSubmitting(false);
+      return;
     }
 
+    // Animate test case results
+    for (let i = 0; i < totalTestCases; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const passed = Math.random() > 0.3; // Simulate test case evaluation
+      setTestCaseResults(prev => prev.map(tc => 
+        tc.index === i ? { ...tc, status: passed ? 'passed' : 'failed' } : tc
+      ));
+    }
+
+    const passedCount = testCaseResults.filter(tc => tc.status === 'passed').length;
+    const finalStatus = passedCount === totalTestCases ? 'accepted' : 'wrong_answer';
+    const points = contest?.contest_problems?.find(cp => cp.problem_id === selectedProblemId)?.points || 0;
+    const score = Math.floor((passedCount / totalTestCases) * points);
+
+    // Update submission with results
+    await (supabase as any).from('submissions').update({
+      status: finalStatus,
+      test_cases_passed: passedCount,
+      score: score,
+    }).eq('id', submission.id);
+
+    toast({
+      title: finalStatus === 'accepted' ? 'Accepted!' : 'Wrong Answer',
+      description: `${passedCount}/${totalTestCases} test cases passed. Score: ${score}`,
+      variant: finalStatus === 'accepted' ? 'default' : 'destructive',
+    });
+
+    refetchSubmissions();
+    refetchLeaderboard();
+
+    // Clear test results after 3 seconds
+    setTimeout(() => setTestCaseResults([]), 3000);
     setSubmitting(false);
   };
 
@@ -238,12 +309,20 @@ export default function ContestParticipate() {
               <CardContent className="p-2">
                 <div className="space-y-2">
                   {leaderboard?.map((participant: any, index: number) => (
-                    <div key={participant.id} className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
-                      <span className="flex items-center gap-2">
-                        <span className="font-semibold text-muted-foreground">#{index + 1}</span>
-                        <span>{participant.profiles?.username || 'User'}</span>
-                      </span>
-                      <Badge variant="secondary">{participant.total_score}</Badge>
+                    <div key={participant.id} className="p-2 rounded hover:bg-muted/50 border border-border/50">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="flex items-center gap-2">
+                          <span className="font-semibold text-muted-foreground">#{index + 1}</span>
+                          <span className="text-sm font-medium">{participant.profiles?.username || 'User'}</span>
+                        </span>
+                        <Badge variant="secondary" className="font-bold">{participant.total_score}</Badge>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <span>{participant.totalSubmissions || 0} submissions</span>
+                        <span className={participant.accuracy >= 50 ? 'text-green-500' : 'text-orange-500'}>
+                          {participant.accuracy || 0}% accuracy
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -319,14 +398,50 @@ export default function ContestParticipate() {
                         }}
                       />
                     </div>
+                    
+                    {/* Test Case Results Animation */}
+                    {testCaseResults.length > 0 && (
+                      <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Evaluating Test Cases...
+                        </h4>
+                        <div className="space-y-2">
+                          {testCaseResults.map((tc) => (
+                            <div key={tc.index} className="flex items-center gap-3 animate-fade-in">
+                              <span className="text-sm text-muted-foreground">Test {tc.index + 1}</span>
+                              <div className="flex-1">
+                                <Progress value={tc.status === 'pending' ? 50 : 100} className="h-2" />
+                              </div>
+                              {tc.status === 'passed' && (
+                                <CheckCircle2 className="h-5 w-5 text-green-500 animate-scale-in" />
+                              )}
+                              {tc.status === 'failed' && (
+                                <XCircle className="h-5 w-5 text-red-500 animate-scale-in" />
+                              )}
+                              {tc.status === 'pending' && (
+                                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <Button
                       className="w-full mt-4"
                       onClick={handleSubmit}
-                      disabled={submitting}
+                      disabled={submitting || contestEnded}
                     >
                       <Send className="mr-2 h-4 w-4" />
-                      {submitting ? 'Submitting...' : 'Submit Solution'}
+                      {contestEnded ? 'Contest Ended' : submitting ? 'Evaluating...' : 'Submit Solution'}
                     </Button>
+                    
+                    {contestEnded && (
+                      <p className="text-sm text-center text-muted-foreground mt-2">
+                        No more submissions are accepted for this contest
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
