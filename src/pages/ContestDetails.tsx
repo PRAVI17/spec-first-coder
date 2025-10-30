@@ -43,7 +43,7 @@ export default function ContestDetails() {
     queryFn: async () => {
       if (!user) return null;
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('contest_participants')
         .select('*')
         .eq('contest_id', id)
@@ -58,7 +58,7 @@ export default function ContestDetails() {
 
   const joinMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('contest_participants')
         .insert({
           contest_id: id!,

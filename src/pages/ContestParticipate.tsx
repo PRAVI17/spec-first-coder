@@ -48,7 +48,7 @@ export default function ContestParticipate() {
   const { data: leaderboard, refetch: refetchLeaderboard } = useQuery({
     queryKey: ['leaderboard', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('contest_participants')
         .select('*, profiles(full_name, username)')
         .eq('contest_id', id)
@@ -65,7 +65,7 @@ export default function ContestParticipate() {
     queryFn: async () => {
       if (!selectedProblemId) return [];
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('submissions')
         .select('*')
         .eq('contest_id', id)
@@ -133,7 +133,7 @@ export default function ContestParticipate() {
     }
 
     // Simulate submission - in real app, this would call Judge0 API via edge function
-    const { error } = await supabase.from('submissions').insert({
+    const { error } = await (supabase as any).from('submissions').insert({
       user_id: user!.id,
       contest_id: id!,
       problem_id: selectedProblemId,
@@ -232,7 +232,7 @@ export default function ContestParticipate() {
               </CardHeader>
               <CardContent className="p-2">
                 <div className="space-y-2">
-                  {leaderboard?.map((participant, index) => (
+                  {leaderboard?.map((participant: any, index: number) => (
                     <div key={participant.id} className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
                       <span className="flex items-center gap-2">
                         <span className="font-semibold text-muted-foreground">#{index + 1}</span>
@@ -334,7 +334,7 @@ export default function ContestParticipate() {
                   <CardContent>
                     {mySubmissions && mySubmissions.length > 0 ? (
                       <div className="space-y-3">
-                        {mySubmissions.map((submission) => (
+                        {mySubmissions.map((submission: any) => (
                           <div key={submission.id} className="flex justify-between items-center p-3 border rounded">
                             <div>
                               <Badge variant="outline" className={getStatusColor(submission.status)}>
