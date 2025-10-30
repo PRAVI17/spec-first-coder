@@ -1,29 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export default function Problems() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: problems, isLoading } = useQuery({
-    queryKey: ['problems'],
+  const { data: problems, isLoading, refetch } = useQuery({
+    queryKey: ['admin-problems'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('problems')
@@ -35,45 +27,39 @@ export default function Problems() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('problems')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['problems'] });
-      toast({
-        title: 'Problem deleted',
-        description: 'The problem has been deleted successfully.',
-      });
-    },
-    onError: (error: any) => {
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this problem?')) return;
+
+    const { error } = await supabase
+      .from('problems')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: 'Failed to delete problem',
         variant: 'destructive',
       });
-    },
-  });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Problem deleted successfully',
+      });
+      refetch();
+    }
+  };
 
   const filteredProblems = problems?.filter(problem =>
-    problem.title.toLowerCase().includes(searchQuery.toLowerCase())
+    problem.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy':
-        return 'bg-green-500/10 text-green-500 hover:bg-green-500/20';
-      case 'medium':
-        return 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20';
-      case 'hard':
-        return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
-      default:
-        return '';
+      case 'easy': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'medium': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'hard': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      default: return '';
     }
   };
 
@@ -84,7 +70,7 @@ export default function Problems() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Problem Bank</h1>
-            <p className="text-muted-foreground">Manage coding problems for contests</p>
+            <p className="text-muted-foreground">Manage coding problems</p>
           </div>
           <Link to="/admin/problems/create">
             <Button>
@@ -101,18 +87,16 @@ export default function Problems() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search problems..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : filteredProblems && filteredProblems.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -129,7 +113,7 @@ export default function Problems() {
                     <TableRow key={problem.id}>
                       <TableCell className="font-medium">{problem.title}</TableCell>
                       <TableCell>
-                        <Badge className={getDifficultyColor(problem.difficulty)}>
+                        <Badge variant="outline" className={getDifficultyColor(problem.difficulty)}>
                           {problem.difficulty}
                         </Badge>
                       </TableCell>
@@ -137,15 +121,13 @@ export default function Problems() {
                       <TableCell>{problem.memory_limit}MB</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Link to={`/admin/problems/${problem.id}/edit`}>
-                            <Button variant="ghost" size="icon">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                          <Button variant="ghost" size="icon" disabled>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteMutation.mutate(problem.id)}
+                            onClick={() => handleDelete(problem.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

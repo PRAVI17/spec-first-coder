@@ -7,14 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface TestCase {
   input: string;
   output: string;
-  isHidden: boolean;
 }
 
 export default function CreateProblem() {
@@ -23,7 +23,7 @@ export default function CreateProblem() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    difficulty: 'easy' as 'easy' | 'medium' | 'hard',
+    difficulty: 'medium' as 'easy' | 'medium' | 'hard',
     constraints: '',
     input_format: '',
     output_format: '',
@@ -32,53 +32,45 @@ export default function CreateProblem() {
     time_limit: 2000,
     memory_limit: 256,
   });
-  const [testCases, setTestCases] = useState<TestCase[]>([
-    { input: '', output: '', isHidden: false }
-  ]);
+  const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const { error } = await supabase
-        .from('problems')
-        .insert([
-          {
-            ...formData,
-            test_cases: testCases as any,
-          }
-        ]);
+    const { error } = await supabase.from('problems').insert({
+      ...formData,
+      test_cases: testCases,
+    });
 
-      if (error) throw error;
-
-      toast({
-        title: 'Problem created',
-        description: 'The problem has been created successfully.',
-      });
-      navigate('/admin/problems');
-    } catch (error: any) {
+    if (error) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: 'Failed to create problem',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Problem created successfully',
+      });
+      navigate('/admin/problems');
     }
+
+    setLoading(false);
   };
 
   const addTestCase = () => {
-    setTestCases([...testCases, { input: '', output: '', isHidden: true }]);
+    setTestCases([...testCases, { input: '', output: '' }]);
   };
 
   const removeTestCase = (index: number) => {
     setTestCases(testCases.filter((_, i) => i !== index));
   };
 
-  const updateTestCase = (index: number, field: keyof TestCase, value: any) => {
+  const updateTestCase = (index: number, field: 'input' | 'output', value: string) => {
     const updated = [...testCases];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index][field] = value;
     setTestCases(updated);
   };
 
@@ -86,23 +78,21 @@ export default function CreateProblem() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <Button variant="ghost" onClick={() => navigate('/admin/problems')} className="mb-4">
+        <Link to="/admin/problems">
+          <Button variant="ghost" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Problems
           </Button>
-          <h1 className="text-3xl font-bold mb-2">Create New Problem</h1>
-          <p className="text-muted-foreground">Add a new coding problem to the bank</p>
-        </div>
+        </Link>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create New Problem</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Problem Title</Label>
+                <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -115,9 +105,9 @@ export default function CreateProblem() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
+                  rows={6}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={6}
                   required
                 />
               </div>
@@ -127,7 +117,9 @@ export default function CreateProblem() {
                   <Label htmlFor="difficulty">Difficulty</Label>
                   <Select
                     value={formData.difficulty}
-                    onValueChange={(value: any) => setFormData({ ...formData, difficulty: value })}
+                    onValueChange={(value: 'easy' | 'medium' | 'hard') =>
+                      setFormData({ ...formData, difficulty: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -162,127 +154,124 @@ export default function CreateProblem() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Format & Constraints</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="input_format">Input Format</Label>
-                <Textarea
-                  id="input_format"
-                  value={formData.input_format}
-                  onChange={(e) => setFormData({ ...formData, input_format: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="output_format">Output Format</Label>
-                <Textarea
-                  id="output_format"
-                  value={formData.output_format}
-                  onChange={(e) => setFormData({ ...formData, output_format: e.target.value })}
-                  rows={3}
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="constraints">Constraints</Label>
                 <Textarea
                   id="constraints"
+                  rows={3}
                   value={formData.constraints}
                   onChange={(e) => setFormData({ ...formData, constraints: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sample Test Case</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="sample_input">Sample Input</Label>
-                <Textarea
-                  id="sample_input"
-                  value={formData.sample_input}
-                  onChange={(e) => setFormData({ ...formData, sample_input: e.target.value })}
-                  rows={3}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sample_output">Sample Output</Label>
-                <Textarea
-                  id="sample_output"
-                  value={formData.sample_output}
-                  onChange={(e) => setFormData({ ...formData, sample_output: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Test Cases</CardTitle>
-              <Button type="button" onClick={addTestCase} variant="outline" size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Test Case
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {testCases.map((testCase, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-semibold">Test Case {index + 1}</h4>
-                    {testCases.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeTestCase(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Input</Label>
-                    <Textarea
-                      value={testCase.input}
-                      onChange={(e) => updateTestCase(index, 'input', e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Expected Output</Label>
-                    <Textarea
-                      value={testCase.output}
-                      onChange={(e) => updateTestCase(index, 'output', e.target.value)}
-                      rows={3}
-                    />
-                  </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="input_format">Input Format</Label>
+                  <Textarea
+                    id="input_format"
+                    rows={3}
+                    value={formData.input_format}
+                    onChange={(e) => setFormData({ ...formData, input_format: e.target.value })}
+                  />
                 </div>
-              ))}
-            </CardContent>
-          </Card>
 
-          <div className="flex gap-4">
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Problem'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => navigate('/admin/problems')}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+                <div className="space-y-2">
+                  <Label htmlFor="output_format">Output Format</Label>
+                  <Textarea
+                    id="output_format"
+                    rows={3}
+                    value={formData.output_format}
+                    onChange={(e) => setFormData({ ...formData, output_format: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="sample_input">Sample Input</Label>
+                  <Textarea
+                    id="sample_input"
+                    rows={3}
+                    value={formData.sample_input}
+                    onChange={(e) => setFormData({ ...formData, sample_input: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sample_output">Sample Output</Label>
+                  <Textarea
+                    id="sample_output"
+                    rows={3}
+                    value={formData.sample_output}
+                    onChange={(e) => setFormData({ ...formData, sample_output: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label>Test Cases</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addTestCase}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Test Case
+                  </Button>
+                </div>
+
+                {testCases.map((testCase, index) => (
+                  <Card key={index}>
+                    <CardContent className="pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <Label>Test Case {index + 1}</Label>
+                        {testCases.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeTestCase(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Input</Label>
+                          <Textarea
+                            value={testCase.input}
+                            onChange={(e) => updateTestCase(index, 'input', e.target.value)}
+                            rows={3}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Expected Output</Label>
+                          <Textarea
+                            value={testCase.output}
+                            onChange={(e) => updateTestCase(index, 'output', e.target.value)}
+                            rows={3}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex gap-4">
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Problem'}
+                </Button>
+                <Link to="/admin/problems">
+                  <Button type="button" variant="outline">
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
