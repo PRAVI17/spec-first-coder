@@ -52,7 +52,7 @@ export default function ContestParticipate() {
   });
 
   const { data: leaderboard, refetch: refetchLeaderboard } = useQuery({
-    queryKey: ['leaderboard', id],
+    queryKey: ['leaderboard', id, user?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('contest_participants')
@@ -79,11 +79,49 @@ export default function ContestParticipate() {
             ...participant,
             totalSubmissions,
             accuracy,
+            isCurrentUser: participant.user_id === user?.id,
           };
         })
       );
+
+      // If current user is not in the list, add them
+      const hasCurrentUser = participantsWithAccuracy.some(p => p.user_id === user?.id);
+      if (!hasCurrentUser && user) {
+        const { data: userProfile } = await (supabase as any)
+          .from('profiles')
+          .select('full_name, username')
+          .eq('id', user.id)
+          .single();
+
+        const { data: userSubmissions } = await (supabase as any)
+          .from('submissions')
+          .select('status')
+          .eq('contest_id', id)
+          .eq('user_id', user.id);
+
+        const totalSubmissions = userSubmissions?.length || 0;
+        const acceptedSubmissions = userSubmissions?.filter((s: any) => s.status === 'accepted').length || 0;
+        const accuracy = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
+
+        participantsWithAccuracy.unshift({
+          id: `temp-${user.id}`,
+          user_id: user.id,
+          contest_id: id,
+          total_score: 0,
+          joined_at: new Date().toISOString(),
+          profiles: userProfile,
+          totalSubmissions,
+          accuracy,
+          isCurrentUser: true,
+        });
+      }
       
-      return participantsWithAccuracy;
+      // Sort with current user at top if they're the only one or tied at 0
+      return participantsWithAccuracy.sort((a, b) => {
+        if (a.isCurrentUser && participantsWithAccuracy.length === 1) return -1;
+        if (b.isCurrentUser && participantsWithAccuracy.length === 1) return 1;
+        return b.total_score - a.total_score;
+      });
     },
     refetchInterval: 3000, // Refresh leaderboard every 3 seconds for live updates
   });
@@ -357,12 +395,19 @@ export default function ContestParticipate() {
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {leaderboard.map((participant: any, index: number) => {
                       const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-muted-foreground';
+                      const isCurrentUser = participant.user_id === user?.id;
                       return (
-                      <div key={participant.id} className="p-2 rounded hover:bg-muted/50 border border-border/50">
+                      <div 
+                        key={participant.id} 
+                        className={`p-2 rounded hover:bg-muted/50 border ${isCurrentUser ? 'border-primary bg-primary/5' : 'border-border/50'}`}
+                      >
                         <div className="flex justify-between items-center mb-1">
                           <span className="flex items-center gap-2">
                             <span className={`font-bold ${rankColor}`}>#{index + 1}</span>
-                            <span className="text-sm font-medium">{participant.profiles?.username || 'User'}</span>
+                            <span className="text-sm font-medium">
+                              {participant.profiles?.username || 'User'}
+                              {isCurrentUser && <span className="ml-1 text-xs text-primary">(You)</span>}
+                            </span>
                           </span>
                           <Badge variant="secondary" className="font-bold">{participant.total_score}</Badge>
                         </div>
