@@ -122,9 +122,11 @@ export default function Contests() {
                       <TableCell>{format(new Date(contest.end_time), 'MMM dd, yyyy HH:mm')}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" disabled>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <Link to={`/admin/contests/${contest.id}`}>
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button variant="ghost" size="icon" disabled>
                             <Pencil className="h-4 w-4" />
                           </Button>
