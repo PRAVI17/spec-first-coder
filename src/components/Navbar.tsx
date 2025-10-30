@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 export function Navbar() {
   const { user, role, signOut } = useAuth();
@@ -64,8 +65,16 @@ export function Navbar() {
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hidden md:flex">
-                    <User className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="hidden md:flex rounded-full p-0 h-10 w-10">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage 
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.email || '')}&background=1e40af&color=fff`} 
+                        alt={user.email || 'User'} 
+                      />
+                      <AvatarFallback>
+                        {user.email?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
