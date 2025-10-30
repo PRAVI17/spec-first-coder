@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom';
 export default function ContestDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const { data: contest, isLoading } = useQuery({
     queryKey: ['contest', id],
@@ -176,7 +176,11 @@ export default function ContestDetails() {
 
             {contest.status === 'active' && (
               <div className="flex gap-4">
-                {participation ? (
+                {role === 'admin' ? (
+                  <Button onClick={() => navigate(`/admin/contests/${id}`)} size="lg">
+                    View Contest Dashboard
+                  </Button>
+                ) : participation ? (
                   <Button onClick={() => navigate(`/contests/${id}/participate`)} size="lg">
                     Continue Contest
                   </Button>

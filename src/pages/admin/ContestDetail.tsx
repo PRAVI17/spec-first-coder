@@ -45,7 +45,7 @@ export default function ContestDetail() {
     },
   });
 
-  // Fetch participants
+  // Fetch participants with accuracy
   const { data: participants, refetch: refetchParticipants } = useQuery({
     queryKey: ['admin-contest-participants', id],
     queryFn: async () => {
@@ -56,8 +56,32 @@ export default function ContestDetail() {
         .order('total_score', { ascending: false });
 
       if (error) throw error;
-      return data;
+
+      // Calculate accuracy for each participant
+      const participantsWithAccuracy = await Promise.all(
+        data.map(async (participant: any) => {
+          const { data: userSubmissions } = await (supabase as any)
+            .from('submissions')
+            .select('status')
+            .eq('contest_id', id)
+            .eq('user_id', participant.user_id);
+
+          const totalSubmissions = userSubmissions?.length || 0;
+          const acceptedSubmissions = userSubmissions?.filter((s: any) => s.status === 'accepted').length || 0;
+          const accuracy = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
+
+          return {
+            ...participant,
+            totalSubmissions,
+            acceptedSubmissions,
+            accuracy,
+          };
+        })
+      );
+
+      return participantsWithAccuracy;
     },
+    refetchInterval: 5000, // Refresh every 5 seconds for live updates
   });
 
   // Fetch recent submissions
@@ -74,6 +98,7 @@ export default function ContestDetail() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 3000, // Refresh every 3 seconds for live updates
   });
 
   // Fetch statistics
@@ -92,6 +117,7 @@ export default function ContestDetail() {
         acceptedSubmissions: acceptedRes.count || 0,
       };
     },
+    refetchInterval: 5000, // Refresh every 5 seconds for live updates
   });
 
   // Real-time updates
@@ -178,12 +204,14 @@ export default function ContestDetail() {
     }
 
     const csv = [
-      ['Rank', 'Username', 'Full Name', 'Score'],
+      ['Rank', 'Username', 'Full Name', 'Score', 'Submissions', 'Accuracy'],
       ...participants.map((p: any, index: number) => [
         index + 1,
         p.profiles?.username || 'Unknown',
         p.profiles?.full_name || 'Unknown',
         p.total_score || 0,
+        p.totalSubmissions || 0,
+        `${p.accuracy || 0}%`,
       ]),
     ]
       .map(row => row.join(','))
@@ -294,9 +322,11 @@ export default function ContestDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead className="w-12">Rank</TableHead>
                       <TableHead>User</TableHead>
                       <TableHead className="text-right">Score</TableHead>
+                      <TableHead className="text-right">Submissions</TableHead>
+                      <TableHead className="text-right">Accuracy</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -310,6 +340,12 @@ export default function ContestDetail() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-bold">{participant.total_score || 0}</TableCell>
+                        <TableCell className="text-right">{participant.totalSubmissions || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className={participant.accuracy >= 50 ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}>
+                            {participant.accuracy || 0}%
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
