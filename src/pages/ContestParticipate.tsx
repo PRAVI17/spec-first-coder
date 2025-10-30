@@ -58,8 +58,7 @@ export default function ContestParticipate() {
         .from('contest_participants')
         .select('*, profiles(full_name, username)')
         .eq('contest_id', id)
-        .order('total_score', { ascending: false })
-        .limit(10);
+        .order('total_score', { ascending: false });
       
       if (error) throw error;
 
@@ -306,6 +305,10 @@ export default function ContestParticipate() {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">{contest.title}</h1>
           <div className="flex items-center gap-4">
+            <Badge variant="secondary" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              {leaderboard?.length || 0} Active Participants
+            </Badge>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-5 w-5" />
               <span className="font-mono font-semibold">{timeLeft}</span>
@@ -339,34 +342,45 @@ export default function ContestParticipate() {
 
             <Card className="mt-4">
               <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Trophy className="h-4 w-4" />
-                  Leaderboard
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Leaderboard
+                  </span>
+                  <Badge variant="outline" className="text-xs">
+                    {leaderboard?.length || 0} Total
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-2">
-                <div className="space-y-2">
-                  {leaderboard?.map((participant: any, index: number) => {
-                    const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-muted-foreground';
-                    return (
-                    <div key={participant.id} className="p-2 rounded hover:bg-muted/50 border border-border/50">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="flex items-center gap-2">
-                          <span className={`font-bold ${rankColor}`}>#{index + 1}</span>
-                          <span className="text-sm font-medium">{participant.profiles?.username || 'User'}</span>
-                        </span>
-                        <Badge variant="secondary" className="font-bold">{participant.total_score}</Badge>
+                {leaderboard && leaderboard.length > 0 ? (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {leaderboard.map((participant: any, index: number) => {
+                      const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-muted-foreground';
+                      return (
+                      <div key={participant.id} className="p-2 rounded hover:bg-muted/50 border border-border/50">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="flex items-center gap-2">
+                            <span className={`font-bold ${rankColor}`}>#{index + 1}</span>
+                            <span className="text-sm font-medium">{participant.profiles?.username || 'User'}</span>
+                          </span>
+                          <Badge variant="secondary" className="font-bold">{participant.total_score}</Badge>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>{participant.totalSubmissions || 0} submissions</span>
+                          <span className={participant.accuracy >= 50 ? 'text-green-500' : 'text-orange-500'}>
+                            {participant.accuracy || 0}% accuracy
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center text-xs text-muted-foreground">
-                        <span>{participant.totalSubmissions || 0} submissions</span>
-                        <span className={participant.accuracy >= 50 ? 'text-green-500' : 'text-orange-500'}>
-                          {participant.accuracy || 0}% accuracy
-                        </span>
-                      </div>
-                    </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No participants yet
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
