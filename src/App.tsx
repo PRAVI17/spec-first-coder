@@ -20,6 +20,8 @@ import ContestDetail from "./pages/admin/ContestDetail";
 import UserContests from "./pages/Contests";
 import ContestDetails from "./pages/ContestDetails";
 import ContestParticipate from "./pages/ContestParticipate";
+import Profile from "./pages/Profile";
+import Leaderboards from "./pages/Leaderboards";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -128,6 +130,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ContestParticipate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leaderboards"
+              element={
+                <ProtectedRoute>
+                  <Leaderboards />
                 </ProtectedRoute>
               }
             />
