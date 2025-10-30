@@ -40,7 +40,7 @@ export default function CreateProblem() {
 
     const { error } = await supabase.from('problems').insert({
       ...formData,
-      test_cases: testCases,
+      test_cases: testCases as any,
     });
 
     if (error) {
