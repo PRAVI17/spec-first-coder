@@ -16,6 +16,9 @@ export default function Contests() {
   const { data: contests, isLoading } = useQuery({
     queryKey: ['contests'],
     queryFn: async () => {
+      // Update contest statuses before fetching
+      await supabase.rpc('update_contest_status');
+      
       const { data, error } = await supabase
         .from('contests')
         .select('*, contest_problems(id)')
@@ -25,6 +28,7 @@ export default function Contests() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 10000, // Refresh every 10 seconds to update contest statuses
   });
 
   const filteredContests = contests?.filter(contest =>

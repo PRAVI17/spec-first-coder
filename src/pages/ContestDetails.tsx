@@ -19,6 +19,9 @@ export default function ContestDetails() {
   const { data: contest, isLoading } = useQuery({
     queryKey: ['contest', id],
     queryFn: async () => {
+      // Update contest status based on current time
+      await supabase.rpc('update_contest_status');
+      
       const { data, error } = await supabase
         .from('contests')
         .select(`
@@ -36,6 +39,7 @@ export default function ContestDetails() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 5000, // Refetch every 5 seconds to keep status updated
   });
 
   const { data: participation } = useQuery({

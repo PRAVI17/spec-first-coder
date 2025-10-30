@@ -25,6 +25,9 @@ export default function ContestParticipate() {
   const { data: contest } = useQuery({
     queryKey: ['contest-participate', id],
     queryFn: async () => {
+      // Update contest status
+      await supabase.rpc('update_contest_status');
+      
       const { data, error } = await supabase
         .from('contests')
         .select(`
@@ -58,6 +61,7 @@ export default function ContestParticipate() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 3000, // Refresh leaderboard every 3 seconds for live updates
   });
 
   const { data: mySubmissions, refetch: refetchSubmissions } = useQuery({
@@ -78,6 +82,7 @@ export default function ContestParticipate() {
       return data;
     },
     enabled: !!selectedProblemId && !!user,
+    refetchInterval: 2000, // Refresh submissions every 2 seconds for instant feedback
   });
 
   useEffect(() => {
