@@ -14,6 +14,9 @@ import Problems from "./pages/admin/Problems";
 import CreateProblem from "./pages/admin/CreateProblem";
 import Contests from "./pages/admin/Contests";
 import CreateContest from "./pages/admin/CreateContest";
+import UserContests from "./pages/Contests";
+import ContestDetails from "./pages/ContestDetails";
+import ContestParticipate from "./pages/ContestParticipate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +77,30 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <CreateContest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests"
+              element={
+                <ProtectedRoute>
+                  <UserContests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests/:id"
+              element={
+                <ProtectedRoute>
+                  <ContestDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests/:id/participate"
+              element={
+                <ProtectedRoute>
+                  <ContestParticipate />
                 </ProtectedRoute>
               }
             />
