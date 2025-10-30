@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Problems from "./pages/admin/Problems";
 import CreateProblem from "./pages/admin/CreateProblem";
+import EditProblem from "./pages/admin/EditProblem";
 import Contests from "./pages/admin/Contests";
 import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
@@ -63,6 +64,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <CreateProblem />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/problems/:id/edit"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <EditProblem />
                 </ProtectedRoute>
               }
             />

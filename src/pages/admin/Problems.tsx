@@ -121,9 +121,11 @@ export default function Problems() {
                       <TableCell>{problem.memory_limit}MB</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" disabled>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <Link to={`/admin/problems/${problem.id}/edit`}>
+                            <Button variant="ghost" size="icon">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="icon"
