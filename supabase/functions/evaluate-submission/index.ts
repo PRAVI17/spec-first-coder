@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { submissionId, code, language, testCases } = await req.json();
+    const { submissionId, code, language, testCases, contestId, problemId } = await req.json();
     
     const JUDGE0_API_KEY = Deno.env.get('JUDGE0_API_KEY');
     const JUDGE0_API_URL = Deno.env.get('JUDGE0_API_URL');
@@ -95,12 +95,33 @@ serve(async (req) => {
     const finalStatus = passedCount === testCases.length ? 'accepted' : 
                        passedCount > 0 ? 'wrong_answer' : 'wrong_answer';
 
+    console.log(`Final status: ${finalStatus}, Test cases passed: ${passedCount}/${testCases.length}`);
+
+    // Get problem points from contest_problems table
+    const { data: contestProblem, error: cpError } = await supabase
+      .from('contest_problems')
+      .select('points')
+      .eq('contest_id', contestId)
+      .eq('problem_id', problemId)
+      .single();
+
+    if (cpError) {
+      console.error('Error fetching contest problem:', cpError);
+    }
+
+    // Calculate score based on test cases passed
+    const maxPoints = contestProblem?.points || 100;
+    const calculatedScore = Math.round((passedCount / testCases.length) * maxPoints);
+
+    console.log(`Calculated score: ${calculatedScore}/${maxPoints} points`);
+
     // Update submission in database
     const { error: updateError } = await supabase
       .from('submissions')
       .update({
         status: finalStatus,
         test_cases_passed: passedCount,
+        score: calculatedScore,
       })
       .eq('id', submissionId);
 
@@ -114,6 +135,8 @@ serve(async (req) => {
         status: finalStatus,
         passedCount,
         totalTestCases: testCases.length,
+        score: calculatedScore,
+        maxPoints,
         results,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

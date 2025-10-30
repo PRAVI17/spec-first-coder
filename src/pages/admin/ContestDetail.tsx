@@ -330,9 +330,11 @@ export default function ContestDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {participants.slice(0, 10).map((participant: any, index: number) => (
+                    {participants.slice(0, 10).map((participant: any, index: number) => {
+                      const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-muted-foreground';
+                      return (
                       <TableRow key={participant.id}>
-                        <TableCell className="font-medium">#{index + 1}</TableCell>
+                        <TableCell className={`font-bold ${rankColor}`}>#{index + 1}</TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{participant.profiles?.username || 'Unknown'}</p>
@@ -347,7 +349,8 @@ export default function ContestDetail() {
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (

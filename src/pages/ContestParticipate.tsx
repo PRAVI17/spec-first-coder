@@ -227,6 +227,8 @@ export default function ContestParticipate() {
           code,
           language,
           testCases: problem.test_cases,
+          contestId: id,
+          problemId: selectedProblemId,
         },
       });
 
@@ -243,17 +245,12 @@ export default function ContestParticipate() {
 
       const passedCount = evalResult.passedCount;
       const finalStatus = evalResult.status;
-      const points = contest?.contest_problems?.find(cp => cp.problem_id === selectedProblemId)?.points || 0;
-      const score = Math.floor((passedCount / totalTestCases) * points);
-
-      // Update submission with score
-      await (supabase as any).from('submissions').update({
-        score: score,
-      }).eq('id', submission.id);
+      const score = evalResult.score || 0;
+      const maxPoints = evalResult.maxPoints || 0;
 
       toast({
         title: finalStatus === 'accepted' ? 'Accepted!' : 'Wrong Answer',
-        description: `${passedCount}/${totalTestCases} test cases passed. Score: ${score}`,
+        description: `${passedCount}/${totalTestCases} test cases passed. Score: ${score}/${maxPoints}`,
         variant: finalStatus === 'accepted' ? 'default' : 'destructive',
       });
 
@@ -349,11 +346,13 @@ export default function ContestParticipate() {
               </CardHeader>
               <CardContent className="p-2">
                 <div className="space-y-2">
-                  {leaderboard?.map((participant: any, index: number) => (
+                  {leaderboard?.map((participant: any, index: number) => {
+                    const rankColor = index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-muted-foreground';
+                    return (
                     <div key={participant.id} className="p-2 rounded hover:bg-muted/50 border border-border/50">
                       <div className="flex justify-between items-center mb-1">
                         <span className="flex items-center gap-2">
-                          <span className="font-semibold text-muted-foreground">#{index + 1}</span>
+                          <span className={`font-bold ${rankColor}`}>#{index + 1}</span>
                           <span className="text-sm font-medium">{participant.profiles?.username || 'User'}</span>
                         </span>
                         <Badge variant="secondary" className="font-bold">{participant.total_score}</Badge>
@@ -365,7 +364,8 @@ export default function ContestParticipate() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
