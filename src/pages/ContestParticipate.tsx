@@ -110,11 +110,28 @@ export default function ContestParticipate() {
     refetchInterval: 2000, // Refresh submissions every 2 seconds for instant feedback
   });
 
+  const selectedProblem = contest?.contest_problems?.find(
+    cp => cp.problem_id === selectedProblemId
+  )?.problems;
+
   useEffect(() => {
     if (contest?.contest_problems && contest.contest_problems.length > 0) {
       setSelectedProblemId(contest.contest_problems[0].problem_id);
     }
   }, [contest]);
+
+  // Load boilerplate code when problem or language changes
+  useEffect(() => {
+    if (selectedProblem) {
+      const boilerplateKey = `boilerplate_${language}` as keyof typeof selectedProblem;
+      const boilerplate = selectedProblem[boilerplateKey] as string;
+      if (boilerplate) {
+        setCode(boilerplate);
+      } else {
+        setCode('');
+      }
+    }
+  }, [selectedProblemId, language, selectedProblem]);
 
   useEffect(() => {
     if (!contest) return;
@@ -180,7 +197,7 @@ export default function ContestParticipate() {
     }));
     setTestCaseResults(initialTestCases);
 
-    // Simulate submission - in real app, this would call Judge0 API via edge function
+    // Create submission record
     const { data: submission, error } = await (supabase as any).from('submissions').insert({
       user_id: user!.id,
       contest_id: id!,
@@ -202,32 +219,60 @@ export default function ContestParticipate() {
       return;
     }
 
-    // Animate test case results
-    for (let i = 0; i < totalTestCases; i++) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const passed = Math.random() > 0.3; // Simulate test case evaluation
-      setTestCaseResults(prev => prev.map(tc => 
-        tc.index === i ? { ...tc, status: passed ? 'passed' : 'failed' } : tc
-      ));
+    // Call Judge0 edge function for real evaluation
+    try {
+      const { data: evalResult, error: evalError } = await supabase.functions.invoke('evaluate-submission', {
+        body: {
+          submissionId: submission.id,
+          code,
+          language,
+          testCases: problem.test_cases,
+        },
+      });
+
+      if (evalError) throw evalError;
+
+      // Animate test case results based on actual evaluation
+      for (let i = 0; i < totalTestCases; i++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const passed = evalResult.results[i]?.passed || false;
+        setTestCaseResults(prev => prev.map(tc => 
+          tc.index === i ? { ...tc, status: passed ? 'passed' : 'failed' } : tc
+        ));
+      }
+
+      const passedCount = evalResult.passedCount;
+      const finalStatus = evalResult.status;
+      const points = contest?.contest_problems?.find(cp => cp.problem_id === selectedProblemId)?.points || 0;
+      const score = Math.floor((passedCount / totalTestCases) * points);
+
+      // Update submission with score
+      await (supabase as any).from('submissions').update({
+        score: score,
+      }).eq('id', submission.id);
+
+      toast({
+        title: finalStatus === 'accepted' ? 'Accepted!' : 'Wrong Answer',
+        description: `${passedCount}/${totalTestCases} test cases passed. Score: ${score}`,
+        variant: finalStatus === 'accepted' ? 'default' : 'destructive',
+      });
+
+    } catch (evalError) {
+      console.error('Evaluation error:', evalError);
+      
+      // Update submission as failed
+      await (supabase as any).from('submissions').update({
+        status: 'wrong_answer',
+        test_cases_passed: 0,
+        score: 0,
+      }).eq('id', submission.id);
+
+      toast({
+        title: 'Evaluation Failed',
+        description: 'Failed to evaluate your submission. Please try again.',
+        variant: 'destructive',
+      });
     }
-
-    const passedCount = testCaseResults.filter(tc => tc.status === 'passed').length;
-    const finalStatus = passedCount === totalTestCases ? 'accepted' : 'wrong_answer';
-    const points = contest?.contest_problems?.find(cp => cp.problem_id === selectedProblemId)?.points || 0;
-    const score = Math.floor((passedCount / totalTestCases) * points);
-
-    // Update submission with results
-    await (supabase as any).from('submissions').update({
-      status: finalStatus,
-      test_cases_passed: passedCount,
-      score: score,
-    }).eq('id', submission.id);
-
-    toast({
-      title: finalStatus === 'accepted' ? 'Accepted!' : 'Wrong Answer',
-      description: `${passedCount}/${totalTestCases} test cases passed. Score: ${score}`,
-      variant: finalStatus === 'accepted' ? 'default' : 'destructive',
-    });
 
     refetchSubmissions();
     refetchLeaderboard();
@@ -236,10 +281,6 @@ export default function ContestParticipate() {
     setTimeout(() => setTestCaseResults([]), 3000);
     setSubmitting(false);
   };
-
-  const selectedProblem = contest?.contest_problems?.find(
-    cp => cp.problem_id === selectedProblemId
-  )?.problems;
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -31,6 +31,11 @@ export default function CreateProblem() {
     sample_output: '',
     time_limit: 2000,
     memory_limit: 256,
+    boilerplate_javascript: '',
+    boilerplate_python: '',
+    boilerplate_java: '',
+    boilerplate_cpp: '',
+    boilerplate_c: '',
   });
   const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '' }]);
 
@@ -257,6 +262,71 @@ export default function CreateProblem() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              <div className="space-y-4">
+                <Label>Boilerplate Code (Optional)</Label>
+                <p className="text-sm text-muted-foreground">Provide starter code for each language</p>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="boilerplate_javascript">JavaScript</Label>
+                  <Textarea
+                    id="boilerplate_javascript"
+                    rows={4}
+                    placeholder="// JavaScript starter code"
+                    value={formData.boilerplate_javascript}
+                    onChange={(e) => setFormData({ ...formData, boilerplate_javascript: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="boilerplate_python">Python</Label>
+                  <Textarea
+                    id="boilerplate_python"
+                    rows={4}
+                    placeholder="# Python starter code"
+                    value={formData.boilerplate_python}
+                    onChange={(e) => setFormData({ ...formData, boilerplate_python: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="boilerplate_java">Java</Label>
+                  <Textarea
+                    id="boilerplate_java"
+                    rows={4}
+                    placeholder="// Java starter code"
+                    value={formData.boilerplate_java}
+                    onChange={(e) => setFormData({ ...formData, boilerplate_java: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="boilerplate_cpp">C++</Label>
+                  <Textarea
+                    id="boilerplate_cpp"
+                    rows={4}
+                    placeholder="// C++ starter code"
+                    value={formData.boilerplate_cpp}
+                    onChange={(e) => setFormData({ ...formData, boilerplate_cpp: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="boilerplate_c">C</Label>
+                  <Textarea
+                    id="boilerplate_c"
+                    rows={4}
+                    placeholder="// C starter code"
+                    value={formData.boilerplate_c}
+                    onChange={(e) => setFormData({ ...formData, boilerplate_c: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4">
