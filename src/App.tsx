@@ -14,6 +14,7 @@ import Problems from "./pages/admin/Problems";
 import CreateProblem from "./pages/admin/CreateProblem";
 import Contests from "./pages/admin/Contests";
 import CreateContest from "./pages/admin/CreateContest";
+import EditContest from "./pages/admin/EditContest";
 import ContestDetail from "./pages/admin/ContestDetail";
 import UserContests from "./pages/Contests";
 import ContestDetails from "./pages/ContestDetails";
@@ -86,6 +87,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <CreateContest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/contests/:id/edit"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <EditContest />
                 </ProtectedRoute>
               }
             />

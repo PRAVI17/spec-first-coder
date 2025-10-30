@@ -127,9 +127,11 @@ export default function Contests() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Button variant="ghost" size="icon" disabled>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <Link to={`/admin/contests/${contest.id}/edit`}>
+                            <Button variant="ghost" size="icon">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="icon"
