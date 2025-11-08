@@ -20,13 +20,30 @@ export default function Contests() {
   const { data: contests, isLoading, refetch } = useQuery({
     queryKey: ['admin-contests'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('contests')
-        .select('*, profiles(full_name, username)')
+        .select('*')
         .order('start_time', { ascending: false });
       
       if (error) throw error;
-      return data;
+      
+      // Fetch profile data for each contest
+      const contestsWithProfiles = await Promise.all(
+        (data || []).map(async (contest) => {
+          if (contest.created_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, username')
+              .eq('id', contest.created_by)
+              .single();
+            
+            return { ...contest, profiles: profile };
+          }
+          return { ...contest, profiles: null };
+        })
+      );
+      
+      return contestsWithProfiles;
     },
   });
 

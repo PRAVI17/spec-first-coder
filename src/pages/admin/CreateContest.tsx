@@ -12,9 +12,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function CreateContest() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -62,6 +64,7 @@ export default function CreateContest() {
         ...formData,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
+        created_by: user?.id,
       })
       .select()
       .single();
