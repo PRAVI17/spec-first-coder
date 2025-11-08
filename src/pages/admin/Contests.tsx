@@ -11,11 +11,9 @@ import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function Contests() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { user } = useAuth();
 
   const { data: contests, isLoading, refetch } = useQuery({
     queryKey: ['admin-contests'],
@@ -26,24 +24,7 @@ export default function Contests() {
         .order('start_time', { ascending: false });
       
       if (error) throw error;
-      
-      // Fetch profile data for each contest
-      const contestsWithProfiles = await Promise.all(
-        (data || []).map(async (contest) => {
-          if (contest.created_by) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name, username')
-              .eq('id', contest.created_by)
-              .single();
-            
-            return { ...contest, profiles: profile };
-          }
-          return { ...contest, profiles: null };
-        })
-      );
-      
-      return contestsWithProfiles;
+      return data;
     },
   });
 
@@ -122,7 +103,6 @@ export default function Contests() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Creator</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Start Time</TableHead>
                     <TableHead>End Time</TableHead>
@@ -133,12 +113,6 @@ export default function Contests() {
                   {filteredContests.map((contest) => (
                     <TableRow key={contest.id}>
                       <TableCell className="font-medium">{contest.title}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p className="font-medium">{(contest as any).profiles?.full_name || 'Unknown'}</p>
-                          <p className="text-muted-foreground">@{(contest as any).profiles?.username || 'unknown'}</p>
-                        </div>
-                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getStatusColor(contest.status)}>
                           {contest.status}
@@ -153,22 +127,18 @@ export default function Contests() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          {contest.created_by === user?.id && (
-                            <>
-                              <Link to={`/admin/contests/${contest.id}/edit`}>
-                                <Button variant="ghost" size="icon">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(contest.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                          <Link to={`/admin/contests/${contest.id}/edit`}>
+                            <Button variant="ghost" size="icon">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(contest.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

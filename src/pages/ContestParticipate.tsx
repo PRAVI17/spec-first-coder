@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
@@ -16,7 +16,6 @@ import Editor from '@monaco-editor/react';
 
 export default function ContestParticipate() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedProblemId, setSelectedProblemId] = useState<string>('');
@@ -26,10 +25,6 @@ export default function ContestParticipate() {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [contestEnded, setContestEnded] = useState(false);
   const [testCaseResults, setTestCaseResults] = useState<Array<{index: number, status: 'pending' | 'passed' | 'failed'}>>([]);
-  
-  // Check if we're in read-only mode (for completed contests)
-  const isReadOnly = searchParams.get('readonly') === 'true';
-  const urlProblemId = searchParams.get('problem');
 
   const { data: contest } = useQuery({
     queryKey: ['contest-participate', id],
@@ -60,8 +55,6 @@ export default function ContestParticipate() {
   const { data: leaderboard } = useQuery({
     queryKey: ['leaderboard', id, user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      
       const { data, error } = await (supabase as any)
         .from('contest_participants')
         .select('*, profiles(full_name, username)')
@@ -72,7 +65,7 @@ export default function ContestParticipate() {
 
       // Calculate accuracy for each participant
       const participantsWithAccuracy = await Promise.all(
-        (data || []).map(async (participant: any) => {
+        data.map(async (participant: any) => {
           const { data: userSubmissions } = await (supabase as any)
             .from('submissions')
             .select('status')
@@ -86,7 +79,6 @@ export default function ContestParticipate() {
           return {
             ...participant,
             totalSubmissions,
-            acceptedSubmissions,
             accuracy,
             isCurrentUser: participant.user_id === user?.id,
           };
@@ -112,7 +104,7 @@ export default function ContestParticipate() {
         const acceptedSubmissions = userSubmissions?.filter((s: any) => s.status === 'accepted').length || 0;
         const accuracy = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
 
-        participantsWithAccuracy.push({
+        participantsWithAccuracy.unshift({
           id: `temp-${user.id}`,
           user_id: user.id,
           contest_id: id,
@@ -120,24 +112,18 @@ export default function ContestParticipate() {
           joined_at: new Date().toISOString(),
           profiles: userProfile,
           totalSubmissions,
-          acceptedSubmissions,
           accuracy,
           isCurrentUser: true,
         });
       }
       
-      // Sort by total score (descending), then by joined time (ascending) for ties
-      const sortedParticipants = participantsWithAccuracy.sort((a, b) => {
-        if (a.total_score !== b.total_score) {
-          return b.total_score - a.total_score;
-        }
-        // For ties, earlier join time gets better rank
-        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+      // Sort with current user at top if they're the only one or tied at 0
+      return participantsWithAccuracy.sort((a, b) => {
+        if (a.isCurrentUser && participantsWithAccuracy.length === 1) return -1;
+        if (b.isCurrentUser && participantsWithAccuracy.length === 1) return 1;
+        return b.total_score - a.total_score;
       });
-
-      return sortedParticipants;
     },
-    enabled: !!user?.id,
   });
 
   // Real-time leaderboard updates
@@ -206,15 +192,13 @@ export default function ContestParticipate() {
 
   useEffect(() => {
     if (contest?.contest_problems && contest.contest_problems.length > 0) {
-      // If URL has a problem ID, use that; otherwise use the first problem
-      const initialProblemId = urlProblemId || contest.contest_problems[0].problem_id;
-      setSelectedProblemId(initialProblemId);
+      setSelectedProblemId(contest.contest_problems[0].problem_id);
     }
-  }, [contest, urlProblemId]);
+  }, [contest]);
 
-  // Load boilerplate code when problem or language changes (skip in read-only mode)
+  // Load boilerplate code when problem or language changes
   useEffect(() => {
-    if (selectedProblem && !isReadOnly) {
+    if (selectedProblem) {
       const boilerplateKey = `boilerplate_${language}` as keyof typeof selectedProblem;
       const boilerplate = selectedProblem[boilerplateKey] as string;
       if (boilerplate) {
@@ -223,7 +207,7 @@ export default function ContestParticipate() {
         setCode('');
       }
     }
-  }, [selectedProblemId, language, selectedProblem, isReadOnly]);
+  }, [selectedProblemId, language, selectedProblem]);
 
   useEffect(() => {
     if (!contest) return;
@@ -396,21 +380,16 @@ export default function ContestParticipate() {
       <Navbar />
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">
-            {contest.title}
-            {isReadOnly && <Badge variant="secondary" className="ml-3">Contest Completed - Read Only</Badge>}
-          </h1>
+          <h1 className="text-2xl font-bold">{contest.title}</h1>
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="flex items-center gap-2">
               <Trophy className="h-4 w-4" />
               {leaderboard?.length || 0} Active Participants
             </Badge>
-            {!isReadOnly && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-5 w-5" />
-                <span className="font-mono font-semibold">{timeLeft}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-5 w-5" />
+              <span className="font-mono font-semibold">{timeLeft}</span>
+            </div>
           </div>
         </div>
 
@@ -526,39 +505,38 @@ export default function ContestParticipate() {
                   </Card>
                 )}
 
-                {!isReadOnly && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <CardTitle>Code Editor</CardTitle>
-                        <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="javascript">JavaScript</SelectItem>
-                            <SelectItem value="python">Python</SelectItem>
-                            <SelectItem value="java">Java</SelectItem>
-                            <SelectItem value="cpp">C++</SelectItem>
-                            <SelectItem value="c">C</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="border rounded-lg overflow-hidden">
-                        <Editor
-                          height="400px"
-                          language={language === 'cpp' ? 'cpp' : language}
-                          value={code}
-                          onChange={(value) => setCode(value || '')}
-                          theme="vs-dark"
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 14,
-                          }}
-                        />
-                      </div>
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Code Editor</CardTitle>
+                      <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="javascript">JavaScript</SelectItem>
+                          <SelectItem value="python">Python</SelectItem>
+                          <SelectItem value="java">Java</SelectItem>
+                          <SelectItem value="cpp">C++</SelectItem>
+                          <SelectItem value="c">C</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Editor
+                        height="400px"
+                        language={language === 'cpp' ? 'cpp' : language}
+                        value={code}
+                        onChange={(value) => setCode(value || '')}
+                        theme="vs-dark"
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 14,
+                        }}
+                      />
+                    </div>
                     
                     {/* Test Case Results Animation */}
                     {testCaseResults.length > 0 && (
@@ -605,7 +583,6 @@ export default function ContestParticipate() {
                     )}
                   </CardContent>
                 </Card>
-                )}
               </TabsContent>
 
               <TabsContent value="submissions">

@@ -6,17 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Users, FileText, Trophy, Download, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Trophy, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function ContestDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   // Fetch contest details
   const { data: contest, refetch: refetchContest } = useQuery({
@@ -242,21 +240,9 @@ export default function ContestDetail() {
               <h1 className="text-3xl font-bold mb-2">{contest.title}</h1>
               <p className="text-muted-foreground">{contest.description}</p>
             </div>
-            <div className="flex gap-2 items-center">
-              <Badge variant="outline" className={getStatusColor(contest.status)}>
-                {contest.status}
-              </Badge>
-              {contest.created_by === user?.id && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/admin/contests/${id}/edit`)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit Contest
-                </Button>
-              )}
-            </div>
+            <Badge variant="outline" className={getStatusColor(contest.status)}>
+              {contest.status}
+            </Badge>
           </div>
           <div className="flex gap-4 text-sm text-muted-foreground">
             <span>Start: {format(new Date(contest.start_time), 'MMM dd, yyyy HH:mm')}</span>

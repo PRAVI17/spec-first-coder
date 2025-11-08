@@ -215,16 +215,7 @@ export default function ContestDetails() {
                 {sortedProblems.map((cp, index) => (
                   <div
                     key={cp.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
-                      contest.status === 'completed' && participation
-                        ? 'hover:bg-muted/50 cursor-pointer'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      if (contest.status === 'completed' && participation) {
-                        navigate(`/contests/${id}/participate?problem=${cp.problems.id}&readonly=true`);
-                      }
-                    }}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <span className="text-lg font-semibold text-muted-foreground">
@@ -240,11 +231,6 @@ export default function ContestDetails() {
                         </div>
                       </div>
                     </div>
-                    {contest.status === 'completed' && participation && (
-                      <Button variant="ghost" size="sm">
-                        View Details
-                      </Button>
-                    )}
                   </div>
                 ))}
               </div>
