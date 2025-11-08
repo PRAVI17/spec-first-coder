@@ -20,9 +20,9 @@ export default function Contests() {
   const { data: contests, isLoading, refetch } = useQuery({
     queryKey: ['admin-contests'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('contests')
-        .select('*')
+        .select('*, profiles(full_name, username)')
         .order('start_time', { ascending: false });
       
       if (error) throw error;
@@ -105,6 +105,7 @@ export default function Contests() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
+                    <TableHead>Creator</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Start Time</TableHead>
                     <TableHead>End Time</TableHead>
@@ -115,6 +116,12 @@ export default function Contests() {
                   {filteredContests.map((contest) => (
                     <TableRow key={contest.id}>
                       <TableCell className="font-medium">{contest.title}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <p className="font-medium">{(contest as any).profiles?.full_name || 'Unknown'}</p>
+                          <p className="text-muted-foreground">@{(contest as any).profiles?.username || 'unknown'}</p>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getStatusColor(contest.status)}>
                           {contest.status}
