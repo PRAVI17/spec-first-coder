@@ -11,10 +11,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function EditContest() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -39,6 +41,18 @@ export default function EditContest() {
       return data;
     },
   });
+
+  // Check ownership
+  useEffect(() => {
+    if (contest && user && contest.created_by !== user.id) {
+      toast({
+        title: 'Access Denied',
+        description: 'You can only edit contests you created',
+        variant: 'destructive',
+      });
+      navigate('/admin/contests');
+    }
+  }, [contest, user, navigate]);
 
   // Fetch contest problems
   const { data: contestProblems } = useQuery({

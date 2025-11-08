@@ -11,9 +11,11 @@ import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Contests() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
 
   const { data: contests, isLoading, refetch } = useQuery({
     queryKey: ['admin-contests'],
@@ -127,18 +129,22 @@ export default function Contests() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Link to={`/admin/contests/${contest.id}/edit`}>
-                            <Button variant="ghost" size="icon">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(contest.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {contest.created_by === user?.id && (
+                            <>
+                              <Link to={`/admin/contests/${contest.id}/edit`}>
+                                <Button variant="ghost" size="icon">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(contest.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
