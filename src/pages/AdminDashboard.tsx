@@ -10,20 +10,24 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Fetch statistics
+  // Fetch statistics - personalized for each admin
   const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin-stats', user?.id],
     queryFn: async () => {
+      if (!user?.id) return { totalUsers: 0, totalContests: 0, totalProblems: 0, activeContests: 0 };
+      
       const [usersRes, contestsRes, problemsRes, activeContestsRes] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('contests').select('id', { count: 'exact', head: true }),
+        supabase.from('contests').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
         supabase.from('problems').select('id', { count: 'exact', head: true }),
-        supabase.from('contests').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('contests').select('id', { count: 'exact', head: true }).eq('status', 'active').eq('created_by', user.id),
       ]);
 
       return {
@@ -33,12 +37,25 @@ export default function AdminDashboard() {
         activeContests: activeContestsRes.count || 0,
       };
     },
+    enabled: !!user?.id,
   });
 
-  // Fetch recent submissions with rank and points
+  // Fetch recent submissions with rank and points - only from admin's contests
   const { data: recentSubmissions } = useQuery({
-    queryKey: ['recent-submissions'],
+    queryKey: ['recent-submissions', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // First get the admin's contest IDs
+      const { data: adminContests } = await supabase
+        .from('contests')
+        .select('id')
+        .eq('created_by', user.id);
+      
+      const contestIds = adminContests?.map(c => c.id) || [];
+      
+      if (contestIds.length === 0) return [];
+
       const { data, error } = await (supabase as any)
         .from('submissions')
         .select(`
@@ -47,6 +64,7 @@ export default function AdminDashboard() {
           problems(title),
           contests(title)
         `)
+        .in('contest_id', contestIds)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -74,12 +92,25 @@ export default function AdminDashboard() {
 
       return enrichedData;
     },
+    enabled: !!user?.id,
   });
 
-  // Fetch top performers across all contests
+  // Fetch top performers - only from admin's contests
   const { data: topPerformers } = useQuery({
-    queryKey: ['top-performers'],
+    queryKey: ['top-performers', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // First get the admin's contest IDs
+      const { data: adminContests } = await supabase
+        .from('contests')
+        .select('id')
+        .eq('created_by', user.id);
+      
+      const contestIds = adminContests?.map(c => c.id) || [];
+      
+      if (contestIds.length === 0) return [];
+
       const { data, error } = await (supabase as any)
         .from('contest_participants')
         .select(`
@@ -88,6 +119,7 @@ export default function AdminDashboard() {
           profiles(full_name, username),
           contests(title)
         `)
+        .in('contest_id', contestIds)
         .gt('total_score', 0)
         .order('total_score', { ascending: false })
         .limit(10);
@@ -95,15 +127,19 @@ export default function AdminDashboard() {
       if (error) throw error;
       return data;
     },
+    enabled: !!user?.id,
   });
 
-  // Fetch contest analytics
+  // Fetch contest analytics - only admin's contests
   const { data: contestAnalytics } = useQuery({
-    queryKey: ['contest-analytics'],
+    queryKey: ['contest-analytics', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
         .from('contests')
         .select('title, id')
+        .eq('created_by', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -126,6 +162,7 @@ export default function AdminDashboard() {
 
       return analyticsData;
     },
+    enabled: !!user?.id,
   });
 
   // Real-time updates for live dashboard
@@ -302,7 +339,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Top Performers</CardTitle>
-              <CardDescription>Leading participants across all contests</CardDescription>
+              <CardDescription>Leading participants in your contests</CardDescription>
             </CardHeader>
             <CardContent>
               {topPerformers && topPerformers.length > 0 ? (
