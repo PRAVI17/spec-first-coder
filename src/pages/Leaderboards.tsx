@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ type UserStats = {
 
 export default function Leaderboards() {
   const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
 
   // Fetch global leaderboard
   const { data: leaderboard, isLoading } = useQuery<UserStats[]>({
@@ -63,6 +64,28 @@ export default function Leaderboards() {
       return userStats.sort((a, b) => b.totalScore - a.totalScore);
     },
   });
+
+  // Real-time updates for global leaderboard
+  useEffect(() => {
+    const submissionsChannel = supabase
+      .channel('global-leaderboard-submissions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'submissions'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(submissionsChannel);
+    };
+  }, [queryClient]);
 
   // Filter leaderboard by search query
   const filteredLeaderboard = leaderboard?.filter((user) =>

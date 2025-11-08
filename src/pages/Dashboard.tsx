@@ -1,9 +1,10 @@
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Clock, Award, Target, Calendar, TrendingUp, ChevronRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { format } from 'date-fns';
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch user statistics
   const { data: stats } = useQuery({
@@ -140,6 +142,47 @@ export default function Dashboard() {
 
   const activeContests = contests?.filter((c: any) => c.status === 'active') || [];
   const upcomingContests = contests?.filter((c: any) => c.status === 'upcoming') || [];
+
+  // Real-time updates for user dashboard
+  useEffect(() => {
+    const participantsChannel = supabase
+      .channel('user-participants-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contest_participants'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['user-stats', user?.id] });
+          queryClient.invalidateQueries({ queryKey: ['completed-contests', user?.id] });
+        }
+      )
+      .subscribe();
+
+    const submissionsChannel = supabase
+      .channel('user-submissions-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'submissions',
+          filter: `user_id=eq.${user?.id}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['user-stats', user?.id] });
+          queryClient.invalidateQueries({ queryKey: ['completed-contests', user?.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(submissionsChannel);
+    };
+  }, [queryClient, user?.id]);
 
   return (
     <div className="min-h-screen bg-background">

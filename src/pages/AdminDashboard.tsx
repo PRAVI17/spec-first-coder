@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, FileCode, Activity, Plus, Eye, TrendingUp } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +13,10 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch statistics
-  const { data: stats, refetch: refetchStats } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const [usersRes, contestsRes, problemsRes, activeContestsRes] = await Promise.all([
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
   });
 
   // Fetch recent submissions with rank and points
-  const { data: recentSubmissions, refetch: refetchSubmissions } = useQuery({
+  const { data: recentSubmissions } = useQuery({
     queryKey: ['recent-submissions'],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -127,39 +128,62 @@ export default function AdminDashboard() {
     },
   });
 
-  // Real-time updates for submissions
+  // Real-time updates for live dashboard
   useEffect(() => {
-    const channel = supabase
-      .channel('admin-dashboard-updates')
+    const submissionsChannel = supabase
+      .channel('admin-submissions-realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'submissions',
+          table: 'submissions'
         },
         () => {
-          refetchSubmissions();
-          refetchStats();
+          queryClient.invalidateQueries({ queryKey: ['recent-submissions'] });
+          queryClient.invalidateQueries({ queryKey: ['top-performers'] });
+          queryClient.invalidateQueries({ queryKey: ['contest-analytics'] });
         }
       )
+      .subscribe();
+
+    const contestsChannel = supabase
+      .channel('admin-contests-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'contests',
+          table: 'contests'
         },
         () => {
-          refetchStats();
+          queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['contest-analytics'] });
+        }
+      )
+      .subscribe();
+
+    const participantsChannel = supabase
+      .channel('admin-participants-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contest_participants'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['top-performers'] });
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(submissionsChannel);
+      supabase.removeChannel(contestsChannel);
+      supabase.removeChannel(participantsChannel);
     };
-  }, [refetchSubmissions, refetchStats]);
+  }, [queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

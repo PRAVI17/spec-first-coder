@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import Editor from '@monaco-editor/react';
 export default function ContestParticipate() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedProblemId, setSelectedProblemId] = useState<string>('');
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState<'javascript' | 'python' | 'java' | 'cpp' | 'c'>('javascript');
@@ -51,7 +52,7 @@ export default function ContestParticipate() {
     },
   });
 
-  const { data: leaderboard, refetch: refetchLeaderboard } = useQuery({
+  const { data: leaderboard } = useQuery({
     queryKey: ['leaderboard', id, user?.id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -123,10 +124,49 @@ export default function ContestParticipate() {
         return b.total_score - a.total_score;
       });
     },
-    refetchInterval: 3000, // Refresh leaderboard every 3 seconds for live updates
   });
 
-  const { data: mySubmissions, refetch: refetchSubmissions } = useQuery({
+  // Real-time leaderboard updates
+  useEffect(() => {
+    const participantsChannel = supabase
+      .channel(`leaderboard-participants-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contest_participants',
+          filter: `contest_id=eq.${id}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['leaderboard', id, user?.id] });
+        }
+      )
+      .subscribe();
+
+    const submissionsChannel = supabase
+      .channel(`leaderboard-submissions-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'submissions',
+          filter: `contest_id=eq.${id}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['leaderboard', id, user?.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(submissionsChannel);
+    };
+  }, [id, user?.id, queryClient]);
+
+  const { data: mySubmissions } = useQuery({
     queryKey: ['my-submissions', id, selectedProblemId],
     queryFn: async () => {
       if (!selectedProblemId) return [];
@@ -144,7 +184,6 @@ export default function ContestParticipate() {
       return data;
     },
     enabled: !!selectedProblemId && !!user,
-    refetchInterval: 2000, // Refresh submissions every 2 seconds for instant feedback
   });
 
   const selectedProblem = contest?.contest_problems?.find(
@@ -308,8 +347,8 @@ export default function ContestParticipate() {
       });
     }
 
-    refetchSubmissions();
-    refetchLeaderboard();
+    queryClient.invalidateQueries({ queryKey: ['my-submissions', id, selectedProblemId] });
+    queryClient.invalidateQueries({ queryKey: ['leaderboard', id, user?.id] });
 
     // Clear test results after 3 seconds
     setTimeout(() => setTestCaseResults([]), 3000);

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 export default function ContestDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch contest details
   const { data: contest, refetch: refetchContest } = useQuery({
@@ -46,7 +47,7 @@ export default function ContestDetail() {
   });
 
   // Fetch participants with accuracy
-  const { data: participants, refetch: refetchParticipants } = useQuery({
+  const { data: participants } = useQuery({
     queryKey: ['admin-contest-participants', id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -81,11 +82,10 @@ export default function ContestDetail() {
 
       return participantsWithAccuracy;
     },
-    refetchInterval: 5000, // Refresh every 5 seconds for live updates
   });
 
   // Fetch recent submissions
-  const { data: submissions, refetch: refetchSubmissions } = useQuery({
+  const { data: submissions } = useQuery({
     queryKey: ['admin-contest-submissions', id],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -98,11 +98,10 @@ export default function ContestDetail() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 3000, // Refresh every 3 seconds for live updates
   });
 
   // Fetch statistics
-  const { data: stats, refetch: refetchStats } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['admin-contest-stats', id],
     queryFn: async () => {
       const [participantsRes, submissionsRes, acceptedRes] = await Promise.all([
@@ -117,49 +116,37 @@ export default function ContestDetail() {
         acceptedSubmissions: acceptedRes.count || 0,
       };
     },
-    refetchInterval: 5000, // Refresh every 5 seconds for live updates
   });
 
-  // Real-time updates
+  // Real-time updates for live leaderboard
   useEffect(() => {
     const channel = supabase
       .channel('admin-contest-updates')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'contest_participants',
           filter: `contest_id=eq.${id}`,
         },
         () => {
-          refetchParticipants();
-          refetchStats();
+          queryClient.invalidateQueries({ queryKey: ['admin-contest-participants', id] });
+          queryClient.invalidateQueries({ queryKey: ['admin-contest-stats', id] });
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'submissions',
           filter: `contest_id=eq.${id}`,
         },
         () => {
-          refetchSubmissions();
-          refetchStats();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'contest_participants',
-          filter: `contest_id=eq.${id}`,
-        },
-        () => {
-          refetchParticipants();
+          queryClient.invalidateQueries({ queryKey: ['admin-contest-submissions', id] });
+          queryClient.invalidateQueries({ queryKey: ['admin-contest-participants', id] });
+          queryClient.invalidateQueries({ queryKey: ['admin-contest-stats', id] });
         }
       )
       .subscribe();
@@ -167,7 +154,7 @@ export default function ContestDetail() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, refetchParticipants, refetchSubmissions, refetchStats]);
+  }, [id, queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
