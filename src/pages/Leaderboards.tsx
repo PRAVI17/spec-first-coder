@@ -123,41 +123,59 @@ export default function Leaderboards() {
         </div>
 
         {/* Top 3 Podium */}
-        {!isLoading && filteredLeaderboard && filteredLeaderboard.length >= 3 && (
-          <div className="grid grid-cols-3 gap-4 mb-8 max-w-4xl mx-auto">
-            {/* 2nd Place */}
-            <Card className="mt-8">
-              <CardContent className="pt-6 text-center">
-                <Medal className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <h3 className="font-bold text-lg">{filteredLeaderboard[1].full_name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[1].username}</p>
-                <p className="text-2xl font-bold text-primary">{filteredLeaderboard[1].totalScore}</p>
-                <p className="text-xs text-muted-foreground">points</p>
-              </CardContent>
-            </Card>
+        {!isLoading && filteredLeaderboard && filteredLeaderboard.length > 0 && (
+          filteredLeaderboard.length >= 3 ? (
+            <div className="grid grid-cols-3 gap-4 mb-8 max-w-4xl mx-auto">
+              {/* 2nd Place */}
+              <Card className="mt-8">
+                <CardContent className="pt-6 text-center">
+                  <Medal className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <h3 className="font-bold text-lg">{filteredLeaderboard[1].full_name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[1].username}</p>
+                  <p className="text-2xl font-bold text-primary">{filteredLeaderboard[1].totalScore}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </CardContent>
+              </Card>
 
-            {/* 1st Place */}
-            <Card className="border-2 border-yellow-500">
-              <CardContent className="pt-6 text-center">
-                <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-2" />
-                <h3 className="font-bold text-xl">{filteredLeaderboard[0].full_name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[0].username}</p>
-                <p className="text-3xl font-bold text-primary">{filteredLeaderboard[0].totalScore}</p>
-                <p className="text-xs text-muted-foreground">points</p>
-              </CardContent>
-            </Card>
+              {/* 1st Place */}
+              <Card className="border-2 border-yellow-500">
+                <CardContent className="pt-6 text-center">
+                  <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-2" />
+                  <h3 className="font-bold text-xl">{filteredLeaderboard[0].full_name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[0].username}</p>
+                  <p className="text-3xl font-bold text-primary">{filteredLeaderboard[0].totalScore}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </CardContent>
+              </Card>
 
-            {/* 3rd Place */}
-            <Card className="mt-8">
-              <CardContent className="pt-6 text-center">
-                <Award className="h-12 w-12 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-bold text-lg">{filteredLeaderboard[2].full_name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[2].username}</p>
-                <p className="text-2xl font-bold text-primary">{filteredLeaderboard[2].totalScore}</p>
-                <p className="text-xs text-muted-foreground">points</p>
-              </CardContent>
-            </Card>
-          </div>
+              {/* 3rd Place */}
+              <Card className="mt-8">
+                <CardContent className="pt-6 text-center">
+                  <Award className="h-12 w-12 text-orange-600 mx-auto mb-2" />
+                  <h3 className="font-bold text-lg">{filteredLeaderboard[2].full_name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[2].username}</p>
+                  <p className="text-2xl font-bold text-primary">{filteredLeaderboard[2].totalScore}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="max-w-md mx-auto mb-8">
+              <Card className="border-2 border-yellow-500">
+                <CardContent className="pt-6 text-center">
+                  <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-2" />
+                  <h3 className="font-bold text-xl">{filteredLeaderboard[0].full_name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">@{filteredLeaderboard[0].username}</p>
+                  <p className="text-3xl font-bold text-primary">{filteredLeaderboard[0].totalScore}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    <p>{filteredLeaderboard[0].totalSubmissions} submissions</p>
+                    <p>{filteredLeaderboard[0].successRate}% success rate</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )
         )}
 
         {/* Search and Full Leaderboard */}

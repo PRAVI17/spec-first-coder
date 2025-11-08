@@ -60,6 +60,8 @@ export default function ContestParticipate() {
   const { data: leaderboard } = useQuery({
     queryKey: ['leaderboard', id, user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await (supabase as any)
         .from('contest_participants')
         .select('*, profiles(full_name, username)')
@@ -70,7 +72,7 @@ export default function ContestParticipate() {
 
       // Calculate accuracy for each participant
       const participantsWithAccuracy = await Promise.all(
-        data.map(async (participant: any) => {
+        (data || []).map(async (participant: any) => {
           const { data: userSubmissions } = await (supabase as any)
             .from('submissions')
             .select('status')
@@ -84,6 +86,7 @@ export default function ContestParticipate() {
           return {
             ...participant,
             totalSubmissions,
+            acceptedSubmissions,
             accuracy,
             isCurrentUser: participant.user_id === user?.id,
           };
@@ -109,7 +112,7 @@ export default function ContestParticipate() {
         const acceptedSubmissions = userSubmissions?.filter((s: any) => s.status === 'accepted').length || 0;
         const accuracy = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
 
-        participantsWithAccuracy.unshift({
+        participantsWithAccuracy.push({
           id: `temp-${user.id}`,
           user_id: user.id,
           contest_id: id,
@@ -117,18 +120,24 @@ export default function ContestParticipate() {
           joined_at: new Date().toISOString(),
           profiles: userProfile,
           totalSubmissions,
+          acceptedSubmissions,
           accuracy,
           isCurrentUser: true,
         });
       }
       
-      // Sort with current user at top if they're the only one or tied at 0
-      return participantsWithAccuracy.sort((a, b) => {
-        if (a.isCurrentUser && participantsWithAccuracy.length === 1) return -1;
-        if (b.isCurrentUser && participantsWithAccuracy.length === 1) return 1;
-        return b.total_score - a.total_score;
+      // Sort by total score (descending), then by joined time (ascending) for ties
+      const sortedParticipants = participantsWithAccuracy.sort((a, b) => {
+        if (a.total_score !== b.total_score) {
+          return b.total_score - a.total_score;
+        }
+        // For ties, earlier join time gets better rank
+        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
       });
+
+      return sortedParticipants;
     },
+    enabled: !!user?.id,
   });
 
   // Real-time leaderboard updates
